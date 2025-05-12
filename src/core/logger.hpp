@@ -1,6 +1,6 @@
 #pragma once
 
-namespace logger {
+namespace rin::log {
 
 void error(const char* format, ...);
 void warn(const char* format, ...);

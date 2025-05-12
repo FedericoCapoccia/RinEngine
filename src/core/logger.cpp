@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-namespace logger {
+namespace rin::log {
 
 enum log_level_t {
     LOG_LEVEL_ERROR = 0,

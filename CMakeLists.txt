@@ -21,7 +21,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     "src/main.cpp"
     "src/core/logger.cpp"
     # "src/core/engine.c"
-    # "src/core/utils/vector.c"
     # "src/window/window.c"
     #
     # "src/renderer/vulkan/loader.c"
