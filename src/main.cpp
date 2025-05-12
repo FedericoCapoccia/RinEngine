@@ -1,8 +1,7 @@
-#include <cstdio>
-#include <cstdlib>
+#include "core/logger.hpp"
 
 int main(void)
 {
-    printf("Hello World!\n");
-    return EXIT_SUCCESS;
+    logger::info("Info %.2f", 3.1235431);
+    return 0;
 }
