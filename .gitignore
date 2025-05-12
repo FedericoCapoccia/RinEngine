@@ -1,0 +1,7 @@
+.vscode/
+.zig-cache/
+bin/
+build/
+.clangd
+.cache/
+.idea/

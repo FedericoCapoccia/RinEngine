@@ -1,0 +1,13 @@
+[submodule "vendor/glfw"]
+	path = vendor/glfw
+	url = https://github.com/glfw/glfw.git
+[submodule "vendor/vma"]
+	path = vendor/vma
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "vendor/volk"]
+	path = vendor/volk
+	url = https://github.com/zeux/volk
+[submodule "vendor/vulkan"]
+	path = vendor/vulkan
+	url = https://github.com/KhronosGroup/Vulkan-Headers
+        branch = vulkan-sdk-1.4.313
