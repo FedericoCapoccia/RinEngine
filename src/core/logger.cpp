@@ -49,6 +49,7 @@ static void log_output(log_level_t level, const char* message, va_list args)
     }
 
     vsnprintf(formatted, (size_t)buf_len + 1, message, args);
+    va_end(args);
 
     FILE* output = (level == LOG_LEVEL_ERROR || level == LOG_LEVEL_WARN) ? stderr : stdout;
     fprintf(output, "%s[%s]\t%s%s\n", log_level_color[level], log_level_tag[level], formatted, ansi_reset);
@@ -60,7 +61,6 @@ void error(const char* message, ...)
     va_list args;
     va_start(args, message);
     log_output(LOG_LEVEL_ERROR, message, args);
-    va_end(args);
 }
 
 void warn(const char* message, ...)
@@ -68,7 +68,6 @@ void warn(const char* message, ...)
     va_list args;
     va_start(args, message);
     log_output(LOG_LEVEL_WARN, message, args);
-    va_end(args);
 }
 
 void info(const char* message, ...)
@@ -76,7 +75,6 @@ void info(const char* message, ...)
     va_list args;
     va_start(args, message);
     log_output(LOG_LEVEL_INFO, message, args);
-    va_end(args);
 }
 
 void debug(const char* message, ...)
@@ -84,7 +82,6 @@ void debug(const char* message, ...)
     va_list args;
     va_start(args, message);
     log_output(LOG_LEVEL_DEBUG, message, args);
-    va_end(args);
 }
 
 }
