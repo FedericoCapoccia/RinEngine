@@ -17,8 +17,29 @@ struct darray {
     darray() = delete;
     darray(const darray&) = delete;
     darray& operator=(const darray&) = delete;
-    darray(darray&& other) = delete;
-    darray& operator=(darray&& other) = delete;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    darray(darray&& other) noexcept
+    {
+        data = other.data;
+        len = other.len;
+        capacity = other.capacity;
+        other.data = nullptr;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    darray& operator=(darray&& other) noexcept
+    {
+        if (&other == this) {
+            return *this;
+        }
+
+        data = other.data;
+        other.data = nullptr;
+        len = other.len;
+        capacity = other.capacity;
+        return *this;
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     darray(bool zeroed) noexcept

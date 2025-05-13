@@ -22,15 +22,13 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     "src/core/logger.cpp"
     "src/core/engine.cpp"
     "src/systems/window/window.cpp"
-    # "src/core/engine.c"
-    # "src/window/window.c"
-    #
+    
     # "src/renderer/vulkan/loader.c"
     # "src/renderer/vulkan/context.c"
     # "src/renderer/vulkan/utils.c"
     # "src/renderer/vulkan/device.c"
     # "src/renderer/vulkan/swapchain.c"
-    #
+    
     # "src/renderer/renderer.c"
 )
 

@@ -1,0 +1,55 @@
+#pragma once
+
+#include "core/containers/darray.hpp"
+#include "core/defines.hpp"
+
+// clang-format off
+#include <volk.h>
+#include <vk_mem_alloc.h>
+// clang-format on
+
+namespace rin::renderer::vulkan {
+
+struct context_t;
+
+struct queue_t {
+    VkQueue handle = VK_NULL_HANDLE;
+    i32 family = -1;
+    bool dedicated = false;
+};
+
+struct device_t {
+    context_t* context;
+    VkPhysicalDevice physical_device;
+    VkDevice logical_device;
+    queue_t graphics_queue;
+    queue_t compute_queue;
+    queue_t transfer_queue;
+    VkPhysicalDeviceProperties properties;
+    VkPhysicalDeviceFeatures features;
+    VkPhysicalDeviceMemoryProperties memory;
+};
+
+struct swapchain_t {
+    context_t* context;
+    VkSwapchainKHR handle;
+    VkExtent2D extent;
+    VkSurfaceFormatKHR format;
+    VkPresentModeKHR present_mode;
+    darray<VkImage> images;
+    darray<VkImageView> views;
+    u32 min_image_count;
+    VkSurfaceCapabilitiesKHR capabilities;
+};
+
+struct context_t {
+    bool validation;
+    VkInstance instance;
+    VkDebugUtilsMessengerEXT messenger;
+    VkSurfaceKHR surface;
+    device_t* device;
+    swapchain_t* swapchain;
+    VmaAllocator vma;
+};
+
+}
