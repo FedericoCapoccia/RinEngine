@@ -20,6 +20,8 @@ add_executable(${CMAKE_PROJECT_NAME})
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     "src/main.cpp"
     "src/core/logger.cpp"
+    "src/core/engine.cpp"
+    "src/systems/window/window.cpp"
     # "src/core/engine.c"
     # "src/window/window.c"
     #
@@ -36,6 +38,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     "src"
     "vendor/glfw/include"
     "vendor/vulkan/include"
+    "vendor/vulkan_utils/include"
     "vendor/vma/include"
     "vendor/volk"
 )
@@ -46,7 +49,7 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     "VK_NO_PROTOTYPES"
     $<$<CONFIG:Release>:RRELEASE>
 )
-target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -fno-exceptions -fno-rtti)
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -fno-exceptions -fno-rtti -std=c++23)
 
 if (WIN32)
     target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE gdi32 winmm dwmapi)

@@ -11,3 +11,6 @@
 	path = vendor/vulkan
 	url = https://github.com/KhronosGroup/Vulkan-Headers
         branch = vulkan-sdk-1.4.313
+[submodule "vendor/vulkan_utils"]
+	path = vendor/vulkan_utils
+	url = https://github.com/KhronosGroup/Vulkan-Utility-Libraries

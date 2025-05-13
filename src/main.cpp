@@ -1,22 +1,35 @@
+#include "core/application.hpp"
+#include "core/engine.hpp"
 #include "core/logger.hpp"
 
-#include "core/containers/darray.hpp"
+#include <cstdlib>
 
 using namespace rin;
 
 int main(void)
 {
-    log::info("Info %.2f", 3.1235431);
-    darray<const char*> arr(false);
-    arr.push("Hello");
-    arr.push("Hello");
-    arr.push("World");
+    application_config app_info {
+        .name = "Test",
+        .window_width = 1280,
+        .window_height = 720,
+    };
 
-    arr[1] = "Balls";
+    application app {
+        .config = app_info,
+        .p_user_data = nullptr,
+    };
 
-    for (size_t i = 0; i < arr.len; i++) {
-        log::info("%s", arr[i]);
+    if (!engine::initialize(&app)) {
+        log::error("failed to initialize engine");
+        return EXIT_FAILURE;
     }
 
-    return 0;
+    if (!engine::run()) {
+        log::error("engine run loop failed");
+        engine::shutdown();
+        return EXIT_FAILURE;
+    }
+
+    engine::shutdown();
+    return EXIT_SUCCESS;
 }
