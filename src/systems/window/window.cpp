@@ -85,12 +85,12 @@ void get_size(u32* out_width, u32* out_height)
     glfwGetFramebufferSize(window, (i32*)out_width, (i32*)out_height);
 }
 
-void get_vulkan_extensions(darray<const char*>* buffer)
+void get_vulkan_extensions(darray<const char*>& buffer)
 {
     u32 count = 0;
     const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&count);
     for (u32 i = 0; i < count; i++) {
-        buffer->push(glfw_extensions[i]);
+        buffer.push(glfw_extensions[i]);
     }
 }
 

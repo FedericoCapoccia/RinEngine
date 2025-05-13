@@ -14,7 +14,7 @@ bool should_close(void);
 void get_size(u32* out_width, u32* out_height);
 void poll(void);
 
-void get_vulkan_extensions(darray<const char*>* buffer);
+void get_vulkan_extensions(darray<const char*>& buffer);
 bool create_vulkan_surface(VkInstance instance, VkSurfaceKHR* out_surface);
 
 }
