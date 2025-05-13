@@ -12,8 +12,10 @@ int main(void)
     arr.push("Hello");
     arr.push("World");
 
+    arr[1] = "Balls";
+
     for (u64 i = 0; i < arr.len; i++) {
-        log::info("%s", arr.data[i]);
+        log::info("%s", arr[i]);
     }
 
     return 0;
