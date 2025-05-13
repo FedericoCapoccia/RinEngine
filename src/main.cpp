@@ -14,7 +14,7 @@ int main(void)
 
     arr[1] = "Balls";
 
-    for (u64 i = 0; i < arr.len; i++) {
+    for (size_t i = 0; i < arr.len; i++) {
         log::info("%s", arr[i]);
     }
 

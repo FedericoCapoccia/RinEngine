@@ -11,8 +11,8 @@ constexpr i32 DARRAY_DEFAULT_CAPACITY = 8;
 template<typename T>
 struct darray {
     T* data;
-    u64 len;
-    u64 capacity;
+    size_t len;
+    size_t capacity;
 
     darray() = delete;
     darray(const darray&) = delete;
