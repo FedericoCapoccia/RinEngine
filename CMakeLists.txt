@@ -24,16 +24,16 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     "src/systems/window/window.cpp"
 
     "src/systems/renderer/renderer.cpp"
-    "src/systems/renderer/vulkan/vma_impl.cpp"
-    "src/systems/renderer/vulkan/loader.cpp"
-    "src/systems/renderer/vulkan/device.cpp"
-    "src/systems/renderer/vulkan/swapchain.cpp"
-    "src/systems/renderer/vulkan/utils.cpp"
-    # "src/renderer/vulkan/context.c"
+    "src/systems/renderer/vk/vma_impl.cpp"
+    "src/systems/renderer/vk/loader.cpp"
+    "src/systems/renderer/vk/context.cpp"
+    "src/systems/renderer/vk/device.cpp"
+    "src/systems/renderer/vk/swapchain.cpp"
+    "src/systems/renderer/vk/utils.cpp"
 )
 
 set_source_files_properties(
-    "src/systems/renderer/vulkan/vma_impl.cpp"
+    "src/systems/renderer/vk/vma_impl.cpp"
     PROPERTIES
     COMPILE_FLAGS "-w"
 )

@@ -1,6 +1,7 @@
 #include "engine.hpp"
 
 #include "core/logger.hpp"
+#include "systems/renderer/renderer.hpp"
 #include "systems/window/window.hpp"
 
 #include <cstdlib>
@@ -32,6 +33,12 @@ bool initialize(application* app)
         return false;
     }
 
+    if (!renderer::initialize(app->config.name)) {
+        log::error("engine::create -> failed to initialize rendering system");
+        shutdown();
+        return false;
+    }
+
     return true;
 }
 
@@ -41,6 +48,7 @@ void shutdown(void)
     if (state == nullptr)
         return;
 
+    renderer::shutdown();
     window::shutdown();
 
     free(state);
