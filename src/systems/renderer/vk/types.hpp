@@ -40,6 +40,7 @@ struct swapchain_t {
     darray<VkImageView> views;
     u32 min_image_count;
     VkSurfaceCapabilitiesKHR capabilities;
+    darray<VkSemaphore> render_semaphores;
 };
 
 struct context_t {

@@ -76,6 +76,7 @@ bool create(context_t* context, VkExtent2D window_extent)
         swapchain = (swapchain_t*)calloc(1, sizeof(swapchain_t));
         swapchain->images = darray<VkImage>(true);
         swapchain->views = darray<VkImageView>(true);
+        swapchain->render_semaphores = darray<VkSemaphore>(true);
         swapchain->context = context;
     }
 
@@ -146,8 +147,7 @@ bool create(context_t* context, VkExtent2D window_extent)
 
     // NOTE: image views
     swapchain->views.reserve(img_count);
-
-    for (u32 i = 0; i < swapchain->images.len; i++) {
+    for (size_t i = 0; i < swapchain->images.len; i++) {
         VkImage img = swapchain->images[i];
 
         VkImageViewCreateInfo view_info = {
@@ -183,6 +183,26 @@ bool create(context_t* context, VkExtent2D window_extent)
     }
     swapchain->views.trim();
 
+    // NOTE: semaphores
+    swapchain->render_semaphores.reserve(img_count);
+    for (size_t i = 0; i < swapchain->images.len; i++) {
+        VkSemaphoreCreateInfo sem_info {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+        };
+
+        VkSemaphore sem;
+        result = vkCreateSemaphore(device, &sem_info, nullptr, &sem);
+        if (result != VK_SUCCESS) {
+            log::error("vulkan::swapchain::create -> failed to create semaphore: %s", string_VkResult(result));
+            destroy();
+            return false;
+        }
+        swapchain->render_semaphores.push(sem);
+    }
+    swapchain->render_semaphores.trim();
+
     context->swapchain = swapchain;
     swapchain->context = context;
     return true;
@@ -195,13 +215,17 @@ bool resize(VkExtent2D window_extent)
         return false;
     }
 
-    for (u32 i = 0; i < swapchain->views.len; i++) {
-        VkImageView view = swapchain->views[i];
-        vkDestroyImageView(swapchain->context->device->logical_device, view, nullptr);
+    VkDevice device = swapchain->context->device->logical_device;
+    vkDeviceWaitIdle(device);
+
+    for (u32 i = 0; i < swapchain->images.len; i++) { // both views and render_semaphores have the same len as images
+        vkDestroyImageView(device, swapchain->views[i], nullptr);
+        vkDestroySemaphore(device, swapchain->render_semaphores[i], nullptr);
     }
 
     swapchain->images.clear();
     swapchain->views.clear();
+    swapchain->render_semaphores.clear();
 
     if (!create(swapchain->context, window_extent)) {
         log::error("vulkan::swapchain::resize -> failed to recreate swapchain");
@@ -218,12 +242,11 @@ void destroy(void)
     }
 
     VkDevice device = swapchain->context->device->logical_device;
+    vkDeviceWaitIdle(device);
 
-    for (u32 i = 0; i < swapchain->views.len; i++) {
-        VkImageView view = swapchain->views[i];
-        if (view != VK_NULL_HANDLE) {
-            vkDestroyImageView(device, view, nullptr);
-        }
+    for (u32 i = 0; i < swapchain->images.len; i++) {
+        vkDestroyImageView(device, swapchain->views[i], nullptr);
+        vkDestroySemaphore(device, swapchain->render_semaphores[i], nullptr);
     }
 
     if (swapchain->handle != VK_NULL_HANDLE) {
