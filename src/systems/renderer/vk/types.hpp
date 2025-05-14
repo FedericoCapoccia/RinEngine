@@ -53,4 +53,13 @@ struct context_t {
     VmaAllocator vma;
 };
 
+struct image_t {
+    VkImage handle;
+    VkImageView view;
+    u32 width;
+    u32 height;
+    VkFormat format;
+    VmaAllocation memory;
+};
+
 }

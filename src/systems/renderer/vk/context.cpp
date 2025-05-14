@@ -18,6 +18,7 @@ static context_t* context = nullptr;
 static VkBool32 on_validation(VkDebugUtilsMessageSeverityFlagBitsEXT, VkDebugUtilsMessageTypeFlagsEXT,
     const VkDebugUtilsMessengerCallbackDataEXT*, void*);
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool create(const char* app_name, bool enable_validation, context_t** out)
 {
 
@@ -221,6 +222,31 @@ void destroy(void)
     free(context);
     context = nullptr;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void begin_label(VkCommandBuffer cmd, const char* name, const vec4f_t& color)
+{
+    if (!context->validation) {
+        return;
+    }
+
+    VkDebugUtilsLabelEXT label {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+        .pNext = nullptr,
+        .pLabelName = name,
+        .color = {
+            color.r,
+            color.g,
+            color.b,
+            color.a,
+        },
+    };
+
+    vkCmdBeginDebugUtilsLabelEXT(cmd, &label);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void end_label(VkCommandBuffer cmd);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static VkBool32 on_validation(

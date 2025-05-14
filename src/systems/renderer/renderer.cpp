@@ -14,6 +14,7 @@ static const bool ENABLE_VALIDATION = true;
 
 struct state_t {
     vulkan::context_t* context;
+    bool resize_requested;
 };
 
 struct state_t* state = nullptr;
@@ -66,6 +67,11 @@ void shutdown(void)
 
     free(state);
     state = nullptr;
+}
+
+void request_resize(void)
+{
+    state->resize_requested = true;
 }
 
 }

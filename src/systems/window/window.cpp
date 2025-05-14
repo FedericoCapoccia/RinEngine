@@ -1,6 +1,7 @@
 #include "window.hpp"
 
 #include "core/logger.hpp"
+#include "systems/renderer/renderer.hpp"
 
 #include <GLFW/glfw3.h>
 #include <vulkan/vk_enum_string_helper.h>
@@ -18,6 +19,14 @@ static GLFWwindow* window = nullptr;
 static void on_error(int code, const char* message)
 {
     log::error("GLFW error[%d]: %s", code, message);
+}
+
+static void on_resize(GLFWwindow* handle, i32 width, i32 height)
+{
+    (void)handle;
+    (void)width;
+    (void)height;
+    rin::renderer::request_resize();
 }
 
 bool initialize(u32 width, u32 height, const char* title)
@@ -45,6 +54,7 @@ bool initialize(u32 width, u32 height, const char* title)
         return false;
     }
 
+    glfwSetFramebufferSizeCallback(window, on_resize);
     glfwSetWindowSizeLimits(window, 100, 100, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
 #ifdef _WIN32
