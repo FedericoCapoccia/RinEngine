@@ -96,6 +96,12 @@ pipeline_builder_t& pipeline_builder_t::set_depth_format(VkFormat format)
     return *this;
 }
 
+pipeline_builder_t& pipeline_builder_t::set_layout(VkPipelineLayout layout)
+{
+    m_layout = layout;
+    return *this;
+}
+
 pipeline_builder_t& pipeline_builder_t::disable_depthtest(void)
 {
     m_depth_stencil.depthTestEnable = VK_FALSE;

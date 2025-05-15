@@ -6,11 +6,6 @@
 
 namespace rin::renderer::vulkan {
 
-struct pipeline_t {
-    VkPipeline handle;
-    VkPipelineLayout layout;
-};
-
 class pipeline_builder_t {
 public:
     pipeline_builder_t(void) { clear(); }
@@ -19,6 +14,7 @@ public:
 
     pipeline_builder_t& disable_blending(void);
     pipeline_builder_t& set_shaders(VkShaderModule vertex, VkShaderModule fragment);
+    pipeline_builder_t& set_layout(VkPipelineLayout layout);
     pipeline_builder_t& set_input_topology(VkPrimitiveTopology topology);
     pipeline_builder_t& set_polygon_mode(VkPolygonMode mode);
     pipeline_builder_t& set_cull_mode(VkCullModeFlags mode, VkFrontFace face);

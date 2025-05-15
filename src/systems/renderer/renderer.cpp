@@ -3,6 +3,7 @@
 #include "core/logger.hpp"
 #include "systems/window/window.hpp"
 #include "vk/context.hpp"
+#include "vk/pipeline.hpp"
 #include "vk/types.hpp"
 
 #include <vulkan/vk_enum_string_helper.h>
@@ -23,6 +24,8 @@ struct state_t {
     VkFence fence;
     VkCommandPool pool;
     VkCommandBuffer cmd;
+    VkPipeline offscreen_pipeline;
+    VkPipelineLayout offscreen_pipeline_layout;
 };
 
 struct state_t* state = nullptr;
@@ -119,6 +122,28 @@ bool initialize(const char* app_name)
     result = vkAllocateCommandBuffers(state->context->device->logical_device, &alloc_info, &state->cmd);
     if (result != VK_SUCCESS) {
         log::error("renderer::initialize -> failed to allocate command buffer: %s", string_VkResult(result));
+        shutdown();
+        return false;
+    }
+
+    // TODO: load and create VkShaderModule
+
+    vulkan::pipeline_builder_t pipeline_builder {};
+    pipeline_builder
+        .set_multisampling_none()
+        .disable_blending()
+        .disable_depthtest()
+        .set_color_attachment_format(state->render_target.format)
+        .set_depth_format(VK_FORMAT_UNDEFINED)
+        .set_cull_mode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE)
+        .set_polygon_mode(VK_POLYGON_MODE_FILL)
+        .set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+        // TODO: .set_layout()
+        // TODO: .set_shaders()
+        ;
+
+    if (!pipeline_builder.build(state->context->device->logical_device, &state->offscreen_pipeline)) {
+        log::error("renderer::initialize -> failed to create offscreen rendering pipeline");
         shutdown();
         return false;
     }
