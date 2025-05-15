@@ -29,6 +29,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     "src/systems/renderer/vk/context.cpp"
     "src/systems/renderer/vk/device.cpp"
     "src/systems/renderer/vk/swapchain.cpp"
+    "src/systems/renderer/vk/pipeline.cpp"
     "src/systems/renderer/vk/utils.cpp"
 )
 
