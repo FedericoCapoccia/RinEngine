@@ -10,6 +10,6 @@ void destroy(void);
 
 void begin_label(VkCommandBuffer cmd, const char* name, const vec4f_t& color);
 void end_label(VkCommandBuffer cmd);
-// image_t allocate_image();
+bool allocate_image(const image_create_info_t& info, image_t* out);
 
 }

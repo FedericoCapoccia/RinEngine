@@ -53,13 +53,28 @@ struct context_t {
     VmaAllocator vma;
 };
 
+enum image_type_t {
+    IMAGE_TYPE_COLOR,
+    IMAGE_TYPE_DEPTH,
+};
+
+struct image_create_info_t {
+    VkFormat format;
+    VkImageUsageFlags usage;
+    u32 width, height;
+    VmaAllocationCreateInfo allocation_info;
+    image_type_t type;
+};
+
 struct image_t {
     VkImage handle;
     VkImageView view;
-    u32 width;
-    u32 height;
+    u32 width, height;
     VkFormat format;
+    VkImageUsageFlags usage;
+    image_type_t type;
     VmaAllocation memory;
+    VmaAllocationCreateInfo allocation_info;
 };
 
 }

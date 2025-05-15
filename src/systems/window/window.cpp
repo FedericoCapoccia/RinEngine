@@ -74,7 +74,6 @@ void shutdown(void)
 
     glfwTerminate();
 }
-
 void show(void)
 {
     glfwShowWindow(window);
@@ -93,6 +92,13 @@ bool should_close(void)
 void get_size(u32* out_width, u32* out_height)
 {
     glfwGetFramebufferSize(window, (i32*)out_width, (i32*)out_height);
+}
+
+void get_monitor_size(u32* out_width, u32* out_height)
+{
+    const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    *out_width = mode->width;
+    *out_height = mode->height;
 }
 
 void get_vulkan_extensions(darray<const char*>& buffer)

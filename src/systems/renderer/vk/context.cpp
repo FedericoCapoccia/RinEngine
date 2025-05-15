@@ -224,6 +224,95 @@ void destroy(void)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+bool allocate_image(const image_create_info_t& info, image_t* out)
+{
+    VkImageCreateInfo image_info {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = info.format,
+        .extent = {
+            .width = info.width,
+            .height = info.height,
+            .depth = 1,
+        },
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = info.usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices = nullptr,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    };
+
+    VkImage image = VK_NULL_HANDLE;
+    VmaAllocation allocation = nullptr;
+    VkResult result = vmaCreateImage(context->vma, &image_info, &info.allocation_info, &image, &allocation, nullptr);
+
+    if (result != VK_SUCCESS) {
+        log::error("vulkan::context::allocate_image -> failed to allocate image: %s", string_VkResult(result));
+        return false;
+    }
+
+    VkImageAspectFlags aspect = 0;
+    switch (info.type) {
+    case IMAGE_TYPE_COLOR:
+        aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+        break;
+    case IMAGE_TYPE_DEPTH:
+        aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+        break;
+    default:
+        break;
+    }
+
+    VkImageViewCreateInfo view_info {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .image = image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = info.format,
+        .components = {
+            .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+        },
+        .subresourceRange = {
+            .aspectMask = aspect,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
+
+    VkImageView view = VK_NULL_HANDLE;
+    result = vkCreateImageView(context->device->logical_device, &view_info, nullptr, &view);
+
+    if (result != VK_SUCCESS) {
+        log::error("vulkan::context::allocate_image -> failed to create image view: %s", string_VkResult(result));
+        return false;
+    }
+
+    out->handle = image;
+    out->view = view;
+    out->memory = allocation;
+    out->type = info.type;
+    out->format = info.format;
+    out->width = info.width;
+    out->height = info.height;
+    out->allocation_info = info.allocation_info;
+    out->usage = info.usage;
+
+    return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void begin_label(VkCommandBuffer cmd, const char* name, const vec4f_t& color)
 {
     if (!context->validation) {
@@ -246,7 +335,14 @@ void begin_label(VkCommandBuffer cmd, const char* name, const vec4f_t& color)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void end_label(VkCommandBuffer cmd);
+void end_label(VkCommandBuffer cmd)
+{
+    if (!context->validation) {
+        return;
+    }
+
+    vkCmdEndDebugUtilsLabelEXT(cmd);
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static VkBool32 on_validation(

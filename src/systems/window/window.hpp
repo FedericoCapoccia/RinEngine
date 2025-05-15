@@ -12,6 +12,7 @@ void shutdown(void);
 void show(void);
 bool should_close(void);
 void get_size(u32* out_width, u32* out_height);
+void get_monitor_size(u32* out_width, u32* out_height);
 void poll(void);
 
 void get_vulkan_extensions(darray<const char*>& buffer);
