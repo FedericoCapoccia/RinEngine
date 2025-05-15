@@ -19,13 +19,13 @@ static const bool ENABLE_VALIDATION = true;
 struct state_t {
     vulkan::context_t* context;
     bool resize_requested;
-    vulkan::image_t render_target;
+    // vulkan::image_t render_target;
     VkSemaphore image_acquired;
     VkFence fence;
     VkCommandPool pool;
     VkCommandBuffer cmd;
-    VkPipeline offscreen_pipeline;
-    VkPipelineLayout offscreen_pipeline_layout;
+    VkPipeline pipeline;
+    VkPipelineLayout pipeline_layout;
 };
 
 struct state_t* state = nullptr;
@@ -71,32 +71,34 @@ bool initialize(const char* app_name)
         return false;
     }
 
-    u32 monitor_width, monitor_height;
-    window::get_monitor_size(&monitor_width, &monitor_height);
+    // TODO: Render target != swapchain
 
-    vulkan::image_create_info_t img_info {
-        .format = VK_FORMAT_R32G32B32A32_SFLOAT,
-        .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        .width = monitor_width,
-        .height = monitor_height,
-        .allocation_info = {
-            .flags = 0,
-            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-            .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            .preferredFlags = 0,
-            .memoryTypeBits = 0,
-            .pool = VK_NULL_HANDLE,
-            .pUserData = nullptr,
-            .priority = 0,
-        },
-        .type = vulkan::IMAGE_TYPE_COLOR,
-    };
+    // u32 monitor_width, monitor_height;
+    // window::get_monitor_size(&monitor_width, &monitor_height);
 
-    if (!vulkan::context::allocate_image(img_info, &state->render_target)) {
-        log::error("renderer::initialize -> failed to allocate render target");
-        shutdown();
-        return false;
-    }
+    // vulkan::image_create_info_t img_info {
+    //     .format = VK_FORMAT_R32G32B32A32_SFLOAT,
+    //     .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+    //     .width = monitor_width,
+    //     .height = monitor_height,
+    //     .allocation_info = {
+    //         .flags = 0,
+    //         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+    //         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    //         .preferredFlags = 0,
+    //         .memoryTypeBits = 0,
+    //         .pool = VK_NULL_HANDLE,
+    //         .pUserData = nullptr,
+    //         .priority = 0,
+    //     },
+    //     .type = vulkan::IMAGE_TYPE_COLOR,
+    // };
+
+    // if (!vulkan::context::allocate_image(img_info, &state->render_target)) {
+    //     log::error("renderer::initialize -> failed to allocate render target");
+    //     shutdown();
+    //     return false;
+    // }
 
     VkCommandPoolCreateInfo pool_info {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -133,7 +135,7 @@ bool initialize(const char* app_name)
         .set_multisampling_none()
         .disable_blending()
         .disable_depthtest()
-        .set_color_attachment_format(state->render_target.format)
+        .set_color_attachment_format(state->context->swapchain->format.format)
         .set_depth_format(VK_FORMAT_UNDEFINED)
         .set_cull_mode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE)
         .set_polygon_mode(VK_POLYGON_MODE_FILL)
@@ -142,7 +144,7 @@ bool initialize(const char* app_name)
         // TODO: .set_shaders()
         ;
 
-    if (!pipeline_builder.build(state->context->device->logical_device, &state->offscreen_pipeline)) {
+    if (!pipeline_builder.build(state->context->device->logical_device, &state->pipeline)) {
         log::error("renderer::initialize -> failed to create offscreen rendering pipeline");
         shutdown();
         return false;
@@ -171,10 +173,10 @@ void shutdown(void)
         vkDestroyFence(device, state->fence, nullptr);
     }
 
-    if (state->render_target.handle != VK_NULL_HANDLE) {
-        vkDestroyImageView(device, state->render_target.view, nullptr);
-        vmaDestroyImage(state->context->vma, state->render_target.handle, state->render_target.memory);
-    }
+    // if (state->render_target.handle != VK_NULL_HANDLE) {
+    //     vkDestroyImageView(device, state->render_target.view, nullptr);
+    //     vmaDestroyImage(state->context->vma, state->render_target.handle, state->render_target.memory);
+    // }
 
     vulkan::context::destroy();
     state->context = nullptr;
