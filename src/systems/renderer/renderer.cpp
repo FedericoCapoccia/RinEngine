@@ -13,21 +13,25 @@
 namespace rin::renderer {
 
 #ifdef RRELEASE
-static const bool ENABLE_VALIDATION = false;
+constexpr bool ENABLE_VALIDATION = false;
 #else
-static const bool ENABLE_VALIDATION = true;
+constexpr bool ENABLE_VALIDATION = true;
 #endif
 
+constexpr u32 MAX_CONCURRENT_FRAMES = 2;
+
+// TODO: frames_in_flight
 struct state_t {
     vulkan::context_t* context;
     bool resize_requested;
-    // vulkan::image_t render_target;
-    VkSemaphore image_acquired;
-    VkFence fence;
-    VkCommandPool pool;
-    VkCommandBuffer cmd;
+    darray<VkSemaphore> image_acquired;
+    darray<VkFence> fences;
+    darray<VkCommandPool> command_pools;
+    darray<VkCommandBuffer> command_buffers;
     VkPipeline pipeline;
     VkPipelineLayout pipeline_layout;
+    u32 in_flight_count; // configurable via gui between 1-MAX_CONCURRENT_FRAMES
+    u32 current_frame;
 };
 
 struct state_t* state = nullptr;
@@ -40,6 +44,11 @@ bool initialize(const char* app_name)
     }
 
     state = (state_t*)calloc(1, sizeof(state_t));
+    state->in_flight_count = MAX_CONCURRENT_FRAMES;
+    state->image_acquired = darray<VkSemaphore> { MAX_CONCURRENT_FRAMES, true };
+    state->fences = darray<VkFence> { MAX_CONCURRENT_FRAMES, true };
+    state->command_pools = darray<VkCommandPool> { MAX_CONCURRENT_FRAMES, true };
+    state->command_buffers = darray<VkCommandBuffer> { MAX_CONCURRENT_FRAMES, true };
 
     if (!vulkan::context::create(app_name, ENABLE_VALIDATION, &state->context)) {
         log::error("renderer::initialize -> failed to create vulkan context");
@@ -48,31 +57,63 @@ bool initialize(const char* app_name)
     }
 
     VkDevice device = state->context->device->logical_device;
+    VkResult result = VK_SUCCESS;
 
-    VkSemaphoreCreateInfo sem_info {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-    };
+    for (u32 i = 0; i < MAX_CONCURRENT_FRAMES; i++) {
+        VkSemaphoreCreateInfo sem_info {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+        };
 
-    VkResult result = vkCreateSemaphore(device, &sem_info, nullptr, &state->image_acquired);
-    if (result != VK_SUCCESS) {
-        log::error("renderer::initialize -> failed to create semaphore: %s", string_VkResult(result));
-        shutdown();
-        return false;
-    }
+        result = vkCreateSemaphore(device, &sem_info, nullptr, &state->image_acquired[i]);
+        if (result != VK_SUCCESS) {
+            log::error("renderer::initialize -> failed to create semaphore: %s", string_VkResult(result));
+            shutdown();
+            return false;
+        }
 
-    VkFenceCreateInfo fence_info {
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
-    };
+        VkFenceCreateInfo fence_info {
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+        };
 
-    result = vkCreateFence(device, &fence_info, nullptr, &state->fence);
-    if (result != VK_SUCCESS) {
-        log::error("renderer::initialize -> failed to create fence: %s", string_VkResult(result));
-        shutdown();
-        return false;
+        result = vkCreateFence(device, &fence_info, nullptr, &state->fences[i]);
+        if (result != VK_SUCCESS) {
+            log::error("renderer::initialize -> failed to create fence: %s", string_VkResult(result));
+            shutdown();
+            return false;
+        }
+
+        VkCommandPoolCreateInfo pool_info {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+            .queueFamilyIndex = (u32)state->context->device->graphics_queue.family,
+        };
+
+        result = vkCreateCommandPool(device, &pool_info, nullptr, &state->command_pools[i]);
+        if (result != VK_SUCCESS) {
+            log::error("renderer::initialize -> failed to create command pool: %s", string_VkResult(result));
+            shutdown();
+            return false;
+        }
+
+        VkCommandBufferAllocateInfo alloc_info {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext = nullptr,
+            .commandPool = state->command_pools[i],
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        };
+
+        result = vkAllocateCommandBuffers(device, &alloc_info, &state->command_buffers[i]);
+        if (result != VK_SUCCESS) {
+            log::error("renderer::initialize -> failed to allocate command buffer: %s", string_VkResult(result));
+            shutdown();
+            return false;
+        }
     }
 
     // TODO: Render target != swapchain
@@ -103,36 +144,6 @@ bool initialize(const char* app_name)
     //     shutdown();
     //     return false;
     // }
-
-    VkCommandPoolCreateInfo pool_info {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-        .queueFamilyIndex = (u32)state->context->device->graphics_queue.family,
-    };
-    result = vkCreateCommandPool(state->context->device->logical_device, &pool_info, nullptr, &state->pool);
-
-    if (result != VK_SUCCESS) {
-        log::error("renderer::initialize -> failed to create command pool: %s", string_VkResult(result));
-        shutdown();
-        return false;
-    }
-
-    VkCommandBufferAllocateInfo alloc_info {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .pNext = nullptr,
-        .commandPool = state->pool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
-    };
-    result = vkAllocateCommandBuffers(device, &alloc_info, &state->cmd);
-    if (result != VK_SUCCESS) {
-        log::error("renderer::initialize -> failed to allocate command buffer: %s", string_VkResult(result));
-        shutdown();
-        return false;
-    }
-
-    // TODO: load and create VkShaderModule
 
     VkShaderModule vert_mod, frag_mod;
 
@@ -209,16 +220,18 @@ void shutdown(void)
         vkDestroyPipeline(device, state->pipeline, nullptr);
     }
 
-    if (state->pool != VK_NULL_HANDLE) {
-        vkDestroyCommandPool(device, state->pool, nullptr);
-    }
+    for (u32 i = 0; i < MAX_CONCURRENT_FRAMES; i++) {
+        if (state->command_pools[i] != VK_NULL_HANDLE) {
+            vkDestroyCommandPool(device, state->command_pools[i], nullptr);
+        }
 
-    if (state->image_acquired != VK_NULL_HANDLE) {
-        vkDestroySemaphore(device, state->image_acquired, nullptr);
-    }
+        if (state->image_acquired[i] != VK_NULL_HANDLE) {
+            vkDestroySemaphore(device, state->image_acquired[i], nullptr);
+        }
 
-    if (state->fence != VK_NULL_HANDLE) {
-        vkDestroyFence(device, state->fence, nullptr);
+        if (state->fences[i] != VK_NULL_HANDLE) {
+            vkDestroyFence(device, state->fences[i], nullptr);
+        }
     }
 
     // if (state->render_target.handle != VK_NULL_HANDLE) {
@@ -263,14 +276,15 @@ bool draw(void)
     VkResult vk_result = VK_SUCCESS;
     bool suboptimal = false;
 
-    vk_result = vkWaitForFences(device, 1, &state->fence, VK_TRUE, UINT64_MAX);
+    vk_result = vkWaitForFences(device, 1, &state->fences[state->current_frame], VK_TRUE, UINT64_MAX);
     if (vk_result != VK_SUCCESS) {
         log::error("renderer::draw -> failed to wait for fences: %s", string_VkResult(vk_result));
         return false;
     }
 
     u32 image_index;
-    vk_result = vkAcquireNextImageKHR(device, swapchain->handle, UINT64_MAX, state->image_acquired, VK_NULL_HANDLE, &image_index);
+    vk_result = vkAcquireNextImageKHR(device, swapchain->handle, UINT64_MAX,
+        state->image_acquired[state->current_frame], VK_NULL_HANDLE, &image_index);
 
     switch (vk_result) {
     case VK_ERROR_OUT_OF_DATE_KHR:
@@ -290,17 +304,19 @@ bool draw(void)
         return false;
     };
 
-    vk_result = vkResetFences(device, 1, &state->fence);
+    vk_result = vkResetFences(device, 1, &state->fences[state->current_frame]);
     if (vk_result != VK_SUCCESS) {
         log::error("renderer::draw -> failed to reset fence: %s", string_VkResult(vk_result));
         return false;
     }
 
-    vk_result = vkResetCommandPool(device, state->pool, 0);
+    vk_result = vkResetCommandPool(device, state->command_pools[state->current_frame], 0);
     if (vk_result != VK_SUCCESS) {
         log::error("renderer::draw -> failed to reset command pool: %s", string_VkResult(vk_result));
         return false;
     }
+
+    VkCommandBuffer cmd = state->command_buffers[state->current_frame];
 
     VkCommandBufferBeginInfo cmd_begin {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -308,14 +324,14 @@ bool draw(void)
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
         .pInheritanceInfo = nullptr,
     };
-    vkBeginCommandBuffer(state->cmd, &cmd_begin);
+    vkBeginCommandBuffer(cmd, &cmd_begin);
     if (vk_result != VK_SUCCESS) {
         log::error("renderer::draw -> failed to begin command buffer: %s", string_VkResult(vk_result));
         return false;
     }
 
     {
-        vulkan::context::begin_label(state->cmd, "color attachment transition", { .data = { 1.f, 0.f, 0.f, 1.f } });
+        vulkan::context::begin_label(cmd, "color attachment transition", { .data = { 1.f, 0.f, 0.f, 1.f } });
         VkImageMemoryBarrier2 before_rendering = vulkan::context::image_layout_transition(
             swapchain->images[image_index], VK_IMAGE_ASPECT_COLOR_BIT,
             VK_IMAGE_LAYOUT_UNDEFINED,
@@ -336,8 +352,8 @@ bool draw(void)
             .imageMemoryBarrierCount = 1,
             .pImageMemoryBarriers = &before_rendering,
         };
-        vkCmdPipelineBarrier2(state->cmd, &dep);
-        vulkan::context::end_label(state->cmd);
+        vkCmdPipelineBarrier2(cmd, &dep);
+        vulkan::context::end_label(cmd);
     }
 
     // NOTE: rendering
@@ -372,17 +388,17 @@ bool draw(void)
         .pStencilAttachment = nullptr,
     };
 
-    vkCmdBeginRendering(state->cmd, &rendering);
-    vulkan::context::begin_label(state->cmd, "Rendering", { .data = { 1.f, 0.f, 0.f, 1.f } });
-    vkCmdBindPipeline(state->cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, state->pipeline);
-    vkCmdSetViewport(state->cmd, 0, 1, &swapchain->viewport);
-    vkCmdSetScissor(state->cmd, 0, 1, &swapchain->scissor);
-    vkCmdDraw(state->cmd, 3, 1, 0, 0);
-    vulkan::context::end_label(state->cmd);
-    vkCmdEndRendering(state->cmd);
+    vkCmdBeginRendering(cmd, &rendering);
+    vulkan::context::begin_label(cmd, "Rendering", { .data = { 1.f, 0.f, 0.f, 1.f } });
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, state->pipeline);
+    vkCmdSetViewport(cmd, 0, 1, &swapchain->viewport);
+    vkCmdSetScissor(cmd, 0, 1, &swapchain->scissor);
+    vkCmdDraw(cmd, 3, 1, 0, 0);
+    vulkan::context::end_label(cmd);
+    vkCmdEndRendering(cmd);
 
     {
-        vulkan::context::begin_label(state->cmd, "present mode transition", { .data = { 1.f, 0.f, 0.f, 1.f } });
+        vulkan::context::begin_label(cmd, "present mode transition", { .data = { 1.f, 0.f, 0.f, 1.f } });
         VkImageMemoryBarrier2 to_present = vulkan::context::image_layout_transition(
             swapchain->images[image_index], VK_IMAGE_ASPECT_COLOR_BIT,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -403,25 +419,25 @@ bool draw(void)
             .imageMemoryBarrierCount = 1,
             .pImageMemoryBarriers = &to_present,
         };
-        vkCmdPipelineBarrier2(state->cmd, &dep);
-        vulkan::context::end_label(state->cmd);
+        vkCmdPipelineBarrier2(cmd, &dep);
+        vulkan::context::end_label(cmd);
     }
 
-    vkEndCommandBuffer(state->cmd);
+    vkEndCommandBuffer(cmd);
 
     // NOTE: submit
 
     VkCommandBufferSubmitInfo cmd_submit {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
         .pNext = nullptr,
-        .commandBuffer = state->cmd,
+        .commandBuffer = cmd,
         .deviceMask = 0,
     };
 
     VkSemaphoreSubmitInfo wait_submit {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .pNext = nullptr,
-        .semaphore = state->image_acquired,
+        .semaphore = state->image_acquired[state->current_frame],
         .value = 0,
         .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         .deviceIndex = 0,
@@ -448,7 +464,7 @@ bool draw(void)
         .pSignalSemaphoreInfos = &signal_submit,
     };
 
-    vk_result = vkQueueSubmit2(state->context->device->graphics_queue.handle, 1, &submit_info, state->fence);
+    vk_result = vkQueueSubmit2(state->context->device->graphics_queue.handle, 1, &submit_info, state->fences[state->current_frame]);
     if (vk_result != VK_SUCCESS) {
         log::error("renderer::draw -> failed to submit command buffer: %s", string_VkResult(vk_result));
         return false;
@@ -493,8 +509,7 @@ bool draw(void)
         }
     }
 
-    // TODO: increment frame
-
+    state->current_frame = (state->current_frame + 1) % state->in_flight_count;
     return true;
 }
 
