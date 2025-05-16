@@ -14,3 +14,7 @@
 [submodule "vendor/vulkan_utils"]
 	path = vendor/vulkan_utils
 	url = https://github.com/KhronosGroup/Vulkan-Utility-Libraries
+[submodule "vendor/imgui"]
+	path = vendor/imgui
+	url = https://github.com/ocornut/imgui
+        branch = docking
