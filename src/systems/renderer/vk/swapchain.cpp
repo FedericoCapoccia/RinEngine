@@ -80,6 +80,20 @@ bool create(context_t* context, VkExtent2D window_extent)
         swapchain->context = context;
     }
 
+    swapchain->viewport = VkViewport {
+        .x = 0,
+        .y = 0,
+        .width = (f32)window_extent.width,
+        .height = (f32)window_extent.height,
+        .minDepth = 0,
+        .maxDepth = 1,
+    };
+
+    swapchain->scissor = VkRect2D {
+        .offset = { 0, 0 },
+        .extent = window_extent,
+    };
+
     VkPhysicalDevice physical_device = swapchain->context->device->physical_device;
     VkDevice device = swapchain->context->device->logical_device;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, context->surface, &swapchain->capabilities);

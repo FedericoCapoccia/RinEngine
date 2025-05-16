@@ -69,6 +69,11 @@ bool run(void)
 
     while (state->is_running) {
         window::poll();
+
+        if (!renderer::draw()) {
+            log::error("engine::run -> failed to draw frame");
+        }
+
         state->is_running = !window::should_close();
     }
 

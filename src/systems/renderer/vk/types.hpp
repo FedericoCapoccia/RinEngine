@@ -41,6 +41,8 @@ struct swapchain_t {
     u32 min_image_count;
     VkSurfaceCapabilitiesKHR capabilities;
     darray<VkSemaphore> render_semaphores;
+    VkViewport viewport;
+    VkRect2D scissor;
 };
 
 struct context_t {

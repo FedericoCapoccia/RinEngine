@@ -199,6 +199,7 @@ void shutdown(void)
     }
 
     VkDevice device = state->context->device->logical_device;
+    vkDeviceWaitIdle(device);
 
     if (state->pipeline_layout != VK_NULL_HANDLE) {
         vkDestroyPipelineLayout(device, state->pipeline_layout, nullptr);
@@ -313,6 +314,188 @@ bool draw(void)
         return false;
     }
 
+    {
+        vulkan::context::begin_label(state->cmd, "color attachment transition", { .data = { 1.f, 0.f, 0.f, 1.f } });
+        VkImageMemoryBarrier2 before_rendering = vulkan::context::image_layout_transition(
+            swapchain->images[image_index], VK_IMAGE_ASPECT_COLOR_BIT,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_2_NONE,
+            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
+
+        VkDependencyInfo dep {
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .pNext = nullptr,
+            .dependencyFlags = 0,
+            .memoryBarrierCount = 0,
+            .pMemoryBarriers = nullptr,
+            .bufferMemoryBarrierCount = 0,
+            .pBufferMemoryBarriers = nullptr,
+            .imageMemoryBarrierCount = 1,
+            .pImageMemoryBarriers = &before_rendering,
+        };
+        vkCmdPipelineBarrier2(state->cmd, &dep);
+        vulkan::context::end_label(state->cmd);
+    }
+
+    // NOTE: rendering
+    VkRenderingAttachmentInfo color_attachment {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .pNext = nullptr,
+        .imageView = swapchain->views[image_index],
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .resolveMode = VK_RESOLVE_MODE_NONE,
+        .resolveImageView = VK_NULL_HANDLE,
+        .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = {
+            .color = { .float32 = { 0.0, 0.0, 0.0, 1.0 } },
+        },
+    };
+
+    VkRenderingInfo rendering {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .renderArea = {
+            .offset = { 0, 0 },
+            .extent = swapchain->extent,
+        },
+        .layerCount = 1,
+        .viewMask = 0,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_attachment,
+        .pDepthAttachment = nullptr,
+        .pStencilAttachment = nullptr,
+    };
+
+    vkCmdBeginRendering(state->cmd, &rendering);
+    vulkan::context::begin_label(state->cmd, "Rendering", { .data = { 1.f, 0.f, 0.f, 1.f } });
+    vkCmdBindPipeline(state->cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, state->pipeline);
+    vkCmdSetViewport(state->cmd, 0, 1, &swapchain->viewport);
+    vkCmdSetScissor(state->cmd, 0, 1, &swapchain->scissor);
+    vkCmdDraw(state->cmd, 3, 1, 0, 0);
+    vulkan::context::end_label(state->cmd);
+    vkCmdEndRendering(state->cmd);
+
+    {
+        vulkan::context::begin_label(state->cmd, "present mode transition", { .data = { 1.f, 0.f, 0.f, 1.f } });
+        VkImageMemoryBarrier2 to_present = vulkan::context::image_layout_transition(
+            swapchain->images[image_index], VK_IMAGE_ASPECT_COLOR_BIT,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_ACCESS_2_NONE,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+
+        VkDependencyInfo dep {
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .pNext = nullptr,
+            .dependencyFlags = 0,
+            .memoryBarrierCount = 0,
+            .pMemoryBarriers = nullptr,
+            .bufferMemoryBarrierCount = 0,
+            .pBufferMemoryBarriers = nullptr,
+            .imageMemoryBarrierCount = 1,
+            .pImageMemoryBarriers = &to_present,
+        };
+        vkCmdPipelineBarrier2(state->cmd, &dep);
+        vulkan::context::end_label(state->cmd);
+    }
+
+    vkEndCommandBuffer(state->cmd);
+
+    // NOTE: submit
+
+    VkCommandBufferSubmitInfo cmd_submit {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext = nullptr,
+        .commandBuffer = state->cmd,
+        .deviceMask = 0,
+    };
+
+    VkSemaphoreSubmitInfo wait_submit {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .pNext = nullptr,
+        .semaphore = state->image_acquired,
+        .value = 0,
+        .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .deviceIndex = 0,
+    };
+
+    VkSemaphoreSubmitInfo signal_submit {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .pNext = nullptr,
+        .semaphore = swapchain->render_semaphores[image_index],
+        .value = 0,
+        .stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+        .deviceIndex = 0,
+    };
+
+    VkSubmitInfo2 submit_info {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .pNext = nullptr,
+        .flags = 0,
+        .waitSemaphoreInfoCount = 1,
+        .pWaitSemaphoreInfos = &wait_submit,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &cmd_submit,
+        .signalSemaphoreInfoCount = 1,
+        .pSignalSemaphoreInfos = &signal_submit,
+    };
+
+    vk_result = vkQueueSubmit2(state->context->device->graphics_queue.handle, 1, &submit_info, state->fence);
+    if (vk_result != VK_SUCCESS) {
+        log::error("renderer::draw -> failed to submit command buffer: %s", string_VkResult(vk_result));
+        return false;
+    }
+
+    // NOTE: present
+
+    VkPresentInfoKHR present {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext = nullptr,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &swapchain->render_semaphores[image_index],
+        .swapchainCount = 1,
+        .pSwapchains = &swapchain->handle,
+        .pImageIndices = &image_index,
+        .pResults = nullptr,
+    };
+
+    vk_result = vkQueuePresentKHR(state->context->device->graphics_queue.handle, &present);
+    switch (vk_result) {
+    case VK_ERROR_OUT_OF_DATE_KHR:
+        if (!resize()) {
+            log::error("renderer::draw -> failed to resize swapchain");
+            return false;
+        }
+        return true;
+        break;
+    case VK_SUBOPTIMAL_KHR:
+        suboptimal = true;
+        break;
+    case VK_SUCCESS:
+        break;
+    default:
+        log::error("renderer::draw -> failed to acquire swapchain image index: %s", string_VkResult(vk_result));
+        return false;
+    };
+
+    if (suboptimal) {
+        if (!resize()) {
+            log::error("renderer::draw -> failed to resize swapchain");
+            return false;
+        }
+    }
+
+    // TODO: increment frame
+
     return true;
 }
+
 }
