@@ -46,6 +46,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     "vendor/vulkan_utils/include"
     "vendor/vma/include"
     "vendor/volk"
+    "vendor/imgui"
 )
 
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE glfw)

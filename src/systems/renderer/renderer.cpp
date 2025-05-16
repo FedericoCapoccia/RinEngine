@@ -20,7 +20,6 @@ constexpr bool ENABLE_VALIDATION = true;
 
 constexpr u32 MAX_CONCURRENT_FRAMES = 2;
 
-// TODO: frames_in_flight
 struct state_t {
     vulkan::context_t* context;
     bool resize_requested;
@@ -115,35 +114,6 @@ bool initialize(const char* app_name)
             return false;
         }
     }
-
-    // TODO: Render target != swapchain
-
-    // u32 monitor_width, monitor_height;
-    // window::get_monitor_size(&monitor_width, &monitor_height);
-
-    // vulkan::image_create_info_t img_info {
-    //     .format = VK_FORMAT_R32G32B32A32_SFLOAT,
-    //     .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-    //     .width = monitor_width,
-    //     .height = monitor_height,
-    //     .allocation_info = {
-    //         .flags = 0,
-    //         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-    //         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-    //         .preferredFlags = 0,
-    //         .memoryTypeBits = 0,
-    //         .pool = VK_NULL_HANDLE,
-    //         .pUserData = nullptr,
-    //         .priority = 0,
-    //     },
-    //     .type = vulkan::IMAGE_TYPE_COLOR,
-    // };
-
-    // if (!vulkan::context::allocate_image(img_info, &state->render_target)) {
-    //     log::error("renderer::initialize -> failed to allocate render target");
-    //     shutdown();
-    //     return false;
-    // }
 
     VkShaderModule vert_mod, frag_mod;
 
