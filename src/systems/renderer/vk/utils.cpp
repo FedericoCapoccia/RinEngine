@@ -1,7 +1,9 @@
 #include "utils.hpp"
 
 #include "core/logger.hpp"
+
 #include <cstring>
+#include <fstream>
 
 namespace rin::renderer::vulkan::utils {
 
@@ -9,6 +11,42 @@ static void log_supported_layers(VkLayerProperties*, size_t);
 static void log_supported_extensions(VkExtensionProperties*, size_t);
 static bool supports_required_layers(VkLayerProperties*, size_t, const darray<const char*>&);
 static bool supports_required_extensions(VkExtensionProperties*, size_t, const darray<const char*>&);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+bool load_shader_module(VkDevice device, const char* filePath, VkShaderModule* out)
+{
+    std::ifstream file(filePath, std::ios::ate | std::ios::binary);
+
+    if (!file.is_open()) {
+        return false;
+    }
+
+    // find what the size of the file is by looking up the location of the cursor
+    // because the cursor is at the end, it gives the size directly in bytes
+    size_t fileSize = (size_t)file.tellg();
+
+    // spirv expects the buffer to be on uint32, so make sure to reserve an int vector big enough for the entire file
+    darray<u32> buffer { fileSize / sizeof(u32), true };
+    file.seekg(0);
+    file.read((char*)buffer.data, fileSize);
+    file.close();
+
+    VkShaderModuleCreateInfo info {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .codeSize = buffer.capacity * sizeof(u32),
+        .pCode = buffer.data,
+    };
+
+    VkShaderModule shaderModule;
+    if (vkCreateShaderModule(device, &info, nullptr, &shaderModule) != VK_SUCCESS) {
+        return false;
+    }
+
+    *out = shaderModule;
+    return true;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool load_instance_layers(VkInstanceCreateInfo* create_info, darray<const char*>& required_layers)

@@ -84,6 +84,11 @@ void poll(void)
     glfwPollEvents();
 }
 
+void wait_events(void)
+{
+    glfwWaitEvents();
+}
+
 bool should_close(void)
 {
     return glfwWindowShouldClose(window);
