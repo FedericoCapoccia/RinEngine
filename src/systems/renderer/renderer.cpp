@@ -1,6 +1,7 @@
 #include "renderer.hpp"
 
 #include "core/logger.hpp"
+#include "gui.hpp"
 #include "systems/window/window.hpp"
 #include "vk/context.hpp"
 #include "vk/pipeline.hpp"
@@ -51,6 +52,12 @@ bool initialize(const char* app_name)
 
     if (!vulkan::context::create(app_name, ENABLE_VALIDATION, &state->context)) {
         log::error("renderer::initialize -> failed to create vulkan context");
+        shutdown();
+        return false;
+    }
+
+    if (!gui::initialize(state->context)) {
+        log::error("renderer::initialize -> failed to initialize GUI system");
         shutdown();
         return false;
     }
@@ -204,6 +211,8 @@ void shutdown(void)
         }
     }
 
+    gui::shutdown();
+
     // if (state->render_target.handle != VK_NULL_HANDLE) {
     //     vkDestroyImageView(device, state->render_target.view, nullptr);
     //     vmaDestroyImage(state->context->vma, state->render_target.handle, state->render_target.memory);
@@ -326,46 +335,98 @@ bool draw(void)
         vulkan::context::end_label(cmd);
     }
 
-    // NOTE: rendering
-    VkRenderingAttachmentInfo color_attachment {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .pNext = nullptr,
-        .imageView = swapchain->views[image_index],
-        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .resolveMode = VK_RESOLVE_MODE_NONE,
-        .resolveImageView = VK_NULL_HANDLE,
-        .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = {
-            .color = { .float32 = { 0.0, 0.0, 0.0, 1.0 } },
-        },
-    };
+    {
+        // NOTE: rendering
+        VkRenderingAttachmentInfo color_attachment {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .pNext = nullptr,
+            .imageView = swapchain->views[image_index],
+            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .resolveMode = VK_RESOLVE_MODE_NONE,
+            .resolveImageView = VK_NULL_HANDLE,
+            .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .clearValue = {
+                .color = { .float32 = { 0.0, 0.0, 0.0, 1.0 } },
+            },
+        };
 
-    VkRenderingInfo rendering {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .renderArea = {
-            .offset = { 0, 0 },
-            .extent = swapchain->extent,
-        },
-        .layerCount = 1,
-        .viewMask = 0,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &color_attachment,
-        .pDepthAttachment = nullptr,
-        .pStencilAttachment = nullptr,
-    };
+        VkRenderingInfo rendering {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .renderArea = {
+                .offset = { 0, 0 },
+                .extent = swapchain->extent,
+            },
+            .layerCount = 1,
+            .viewMask = 0,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &color_attachment,
+            .pDepthAttachment = nullptr,
+            .pStencilAttachment = nullptr,
+        };
 
-    vkCmdBeginRendering(cmd, &rendering);
-    vulkan::context::begin_label(cmd, "Rendering", { .data = { 1.f, 0.f, 0.f, 1.f } });
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, state->pipeline);
-    vkCmdSetViewport(cmd, 0, 1, &swapchain->viewport);
-    vkCmdSetScissor(cmd, 0, 1, &swapchain->scissor);
-    vkCmdDraw(cmd, 3, 1, 0, 0);
-    vulkan::context::end_label(cmd);
-    vkCmdEndRendering(cmd);
+        vkCmdBeginRendering(cmd, &rendering);
+        vulkan::context::begin_label(cmd, "Rendering", { .data = { 1.f, 0.f, 0.f, 1.f } });
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, state->pipeline);
+        vkCmdSetViewport(cmd, 0, 1, &swapchain->viewport);
+        vkCmdSetScissor(cmd, 0, 1, &swapchain->scissor);
+        vkCmdDraw(cmd, 3, 1, 0, 0);
+        vulkan::context::end_label(cmd);
+        vkCmdEndRendering(cmd);
+    }
+
+    {
+        VkRenderingAttachmentInfo color_attachment {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .pNext = nullptr,
+            .imageView = swapchain->views[image_index],
+            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .resolveMode = VK_RESOLVE_MODE_NONE,
+            .resolveImageView = VK_NULL_HANDLE,
+            .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .clearValue = {
+                .color = { .float32 = { 0.0, 0.0, 0.0, 1.0 } },
+            },
+        };
+
+        VkRenderingInfo rendering {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .renderArea = {
+                .offset = { 0, 0 },
+                .extent = swapchain->extent,
+            },
+            .layerCount = 1,
+            .viewMask = 0,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &color_attachment,
+            .pDepthAttachment = nullptr,
+            .pStencilAttachment = nullptr,
+        };
+
+        vkCmdBeginRendering(cmd, &rendering);
+        vulkan::context::begin_label(cmd, "ImGui", { .data = { 1.f, 0.f, 0.f, 1.f } });
+
+        gui::prepare();
+
+        ImGui::Begin("Tool", nullptr, 0);
+        ImGui::Text("Frame time: %.3f ms", 0.0f);
+        ImGui::Text("FPS: %d", 0);
+        ImGui::SliderInt("Frame Buffering", (i32*)&state->in_flight_count, 1, MAX_CONCURRENT_FRAMES);
+        ImGui::Text("Current value: %d", state->in_flight_count);
+        ImGui::End();
+
+        gui::draw(cmd);
+
+        vulkan::context::end_label(cmd);
+        vkCmdEndRendering(cmd);
+    }
 
     {
         vulkan::context::begin_label(cmd, "present mode transition", { .data = { 1.f, 0.f, 0.f, 1.f } });

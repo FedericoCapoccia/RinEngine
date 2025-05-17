@@ -4,6 +4,7 @@
 #include "systems/renderer/renderer.hpp"
 
 #include <GLFW/glfw3.h>
+#include <backends/imgui_impl_glfw.h>
 #include <vulkan/vk_enum_string_helper.h>
 
 #ifdef _WIN32
@@ -74,6 +75,17 @@ void shutdown(void)
 
     glfwTerminate();
 }
+
+void init_imgui_vulkan(void)
+{
+    ImGui_ImplGlfw_InitForVulkan(window, true);
+}
+
+void shutdown_imgui(void)
+{
+    ImGui_ImplGlfw_Shutdown();
+}
+
 void show(void)
 {
     glfwShowWindow(window);
@@ -97,6 +109,11 @@ bool should_close(void)
 void get_size(u32* out_width, u32* out_height)
 {
     glfwGetFramebufferSize(window, (i32*)out_width, (i32*)out_height);
+}
+
+void get_scale(f32* xscale, f32* yscale)
+{
+    glfwGetWindowContentScale(window, xscale, yscale);
 }
 
 void get_monitor_size(u32* out_width, u32* out_height)

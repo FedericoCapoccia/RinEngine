@@ -31,6 +31,15 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     "src/systems/renderer/vk/swapchain.cpp"
     "src/systems/renderer/vk/pipeline.cpp"
     "src/systems/renderer/vk/utils.cpp"
+
+    "src/systems/renderer/gui.cpp"
+    "vendor/imgui/imgui.cpp"
+    "vendor/imgui/imgui_demo.cpp"
+    "vendor/imgui/imgui_draw.cpp"
+    "vendor/imgui/imgui_tables.cpp"
+    "vendor/imgui/imgui_widgets.cpp"
+    "vendor/imgui/backends/imgui_impl_vulkan.cpp"
+    "vendor/imgui/backends/imgui_impl_glfw.cpp"
 )
 
 set_source_files_properties(
@@ -53,6 +62,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE glfw)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE 
     "GLFW_INCLUDE_NONE"
     "VK_NO_PROTOTYPES"
+    "IMGUI_IMPL_VULKAN_USE_VOLK"
     $<$<CONFIG:Release>:RRELEASE>
 )
 target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -fno-exceptions -fno-rtti -std=c++23)

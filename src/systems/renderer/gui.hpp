@@ -6,15 +6,10 @@
 
 namespace rin::renderer::gui {
 
-struct gui_t {
-    ImGuiContext* context;
-    VkDescriptorPool pool;
-    VkDevice device;
-};
-
-bool initialize(vulkan::context_t* vk_context, gui_t** out);
+bool initialize(vulkan::context_t* vk_context);
 void shutdown(void);
 void on_resize(u32 min_image_count);
 void draw(VkCommandBuffer cmd);
+void prepare(void);
 
 }
