@@ -1,5 +1,6 @@
 #include "engine.hpp"
 
+#include "core/clock.hpp"
 #include "core/logger.hpp"
 #include "systems/renderer/renderer.hpp"
 #include "systems/window/window.hpp"
@@ -22,6 +23,8 @@ bool initialize(application* app)
         log::error("engine::initialize -> engine already initialized");
         return false;
     }
+
+    clock::init();
 
     log::info("initializing engine");
     state = (state_t*)calloc(1, sizeof(state_t));
@@ -54,6 +57,7 @@ void shutdown(void)
     free(state);
     state = nullptr;
     log::info("engine shut down");
+    clock::shutdown();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -68,12 +72,16 @@ bool run(void)
     state->is_running = true;
 
     while (state->is_running) {
-        window::poll();
+        clock::track_update();
 
         if (!renderer::draw()) {
             log::error("engine::run -> failed to draw frame");
         }
 
+        clock::track_draw();
+        clock::compute_frametime();
+
+        window::poll();
         state->is_running = !window::should_close();
     }
 

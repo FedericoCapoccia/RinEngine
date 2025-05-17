@@ -1,5 +1,6 @@
 #include "renderer.hpp"
 
+#include "core/clock.hpp"
 #include "core/logger.hpp"
 #include "gui.hpp"
 #include "systems/window/window.hpp"
@@ -416,8 +417,8 @@ bool draw(void)
         gui::prepare();
 
         ImGui::Begin("Tool", nullptr, 0);
-        ImGui::Text("Frame time: %.3f ms", 0.0f);
-        ImGui::Text("FPS: %d", 0);
+        ImGui::Text("Frame time: %.3f ms", clock::get_frametime_ms());
+        ImGui::Text("FPS: %llu", clock::get_fps());
         ImGui::SliderInt("Frame Buffering", (i32*)&state->in_flight_count, 1, MAX_CONCURRENT_FRAMES);
         ImGui::Text("Current value: %d", state->in_flight_count);
         ImGui::End();

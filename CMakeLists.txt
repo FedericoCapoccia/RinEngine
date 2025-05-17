@@ -20,6 +20,7 @@ add_executable(${CMAKE_PROJECT_NAME})
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     "src/main.cpp"
     "src/core/logger.cpp"
+    "src/core/clock.cpp"
     "src/core/engine.cpp"
     "src/systems/window/window.cpp"
 
