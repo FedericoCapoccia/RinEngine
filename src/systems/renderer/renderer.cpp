@@ -77,12 +77,12 @@ struct vertex_t {
 
 // color format -> 0xAABBGGRR
 constexpr vertex_t vertices[6] = {
-    { { 0.5, 0.5 }, 0xFF0000FF }, // in alto a destra - blu
-    { { -0.5, 0.5 }, 0xFF00FF00 }, // in alto a sinistra - verde
-    { { -0.5, -0.5 }, 0xFFFF00FF }, // in basso a sinistra - viola
-    { { -0.5, -0.5 }, 0xFFFF00FF }, // in basso a sinistra - viola
-    { { 0.5, -0.5 }, 0xFFFFFF00 }, // in basso a destra - giallo
-    { { 0.5, 0.5 }, 0xFF0000FF }, // in alto a destra - blu
+    { { 0.5, 0.5 }, 0xFFFFFFFF }, // in alto a destra - blu
+    { { -0.5, 0.5 }, 0xFFFFFFFF }, // in alto a sinistra - verde
+    { { -0.5, -0.5 }, 0xFFFFFFFF }, // in basso a sinistra - viola
+    { { -0.5, -0.5 }, 0xFFFFFFFF }, // in basso a sinistra - viola
+    { { 0.5, -0.5 }, 0xFFFFFFFF }, // in basso a destra - giallo
+    { { 0.5, 0.5 }, 0xFFFFFFFF }, // in alto a destra - blu
 };
 
 struct state_t* state = nullptr;
