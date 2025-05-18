@@ -224,6 +224,44 @@ void destroy(void)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+bool allocate_buffer(const buffer_create_info_t& info, buffer_t* out)
+{
+    VkBufferCreateInfo buffer_info {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .size = info.size,
+        .usage = info.usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices = nullptr,
+    };
+
+    VmaAllocationCreateInfo vma_info {
+        .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+        .usage = info.memory_usage,
+        .requiredFlags = 0,
+        .preferredFlags = 0,
+        .memoryTypeBits = 0,
+        .pool = 0,
+        .pUserData = nullptr,
+        .priority = 0,
+    };
+
+    VkResult result = vmaCreateBuffer(context->vma, &buffer_info, &vma_info, &out->handle, &out->memory, &out->allocation_info);
+
+    if (result != VK_SUCCESS) {
+        log::error("vulkan::context::allocate_buffer -> failed to allocate buffer: %s", string_VkResult(result));
+        return false;
+    }
+
+    out->memory_usage = info.memory_usage;
+    out->usage = info.usage;
+    out->size = info.size;
+    return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool allocate_image(const image_create_info_t& info, image_t* out)
 {
     VkImageCreateInfo image_info {
@@ -313,7 +351,7 @@ bool allocate_image(const image_create_info_t& info, image_t* out)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void begin_label(VkCommandBuffer cmd, const char* name, const vec4f_t& color)
+void begin_label(VkCommandBuffer cmd, const char* name, const glm::vec4& color)
 {
     if (!context->validation) {
         return;

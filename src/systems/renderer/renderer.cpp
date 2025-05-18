@@ -10,6 +10,7 @@
 #include "vk/types.hpp"
 #include "vk/utils.hpp"
 
+#include <glm/glm.hpp>
 #include <vulkan/vk_enum_string_helper.h>
 
 namespace rin::renderer {
@@ -33,6 +34,55 @@ struct state_t {
     VkPipelineLayout pipeline_layout;
     u32 in_flight_count; // configurable via gui between 1-MAX_CONCURRENT_FRAMES
     u32 current_frame;
+    vulkan::buffer_t vertex_buffer;
+};
+
+struct vertex_t {
+    glm::vec2 pos;
+    u32 color;
+
+    static VkVertexInputBindingDescription binding()
+    {
+        VkVertexInputBindingDescription desc {
+            .binding = 0,
+            .stride = sizeof(vertex_t),
+            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+        };
+        return desc;
+    }
+
+    static darray<VkVertexInputAttributeDescription> attributes()
+    {
+        darray<VkVertexInputAttributeDescription> desc { 2, true };
+
+        VkVertexInputAttributeDescription position {
+            .location = 0,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32_SFLOAT,
+            .offset = offsetof(vertex_t, pos),
+        };
+        desc.push(position);
+
+        VkVertexInputAttributeDescription color {
+            .location = 1,
+            .binding = 0,
+            .format = VK_FORMAT_R8G8B8A8_UNORM,
+            .offset = offsetof(vertex_t, color),
+        };
+        desc.push(color);
+
+        return desc;
+    }
+};
+
+// color format -> 0xAABBGGRR
+constexpr vertex_t vertices[6] = {
+    { { 0.5, 0.5 }, 0xFF0000FF }, // in alto a destra - blu
+    { { -0.5, 0.5 }, 0xFF00FF00 }, // in alto a sinistra - verde
+    { { -0.5, -0.5 }, 0xFFFF00FF }, // in basso a sinistra - viola
+    { { -0.5, -0.5 }, 0xFFFF00FF }, // in basso a sinistra - viola
+    { { 0.5, -0.5 }, 0xFFFFFF00 }, // in basso a destra - giallo
+    { { 0.5, 0.5 }, 0xFF0000FF }, // in alto a destra - blu
 };
 
 struct state_t* state = nullptr;
@@ -123,6 +173,13 @@ bool initialize(const char* app_name)
         }
     }
 
+    vulkan::buffer_create_info_t buffer_info {
+        .size = sizeof(vertices[0]) * 6,
+        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        .memory_usage = VMA_MEMORY_USAGE_AUTO,
+    };
+    vulkan::context::allocate_buffer(buffer_info, &state->vertex_buffer);
+
     VkShaderModule vert_mod, frag_mod;
 
     if (!vulkan::utils::load_shader_module(device, "resources/shaders/triangle.vert.spv", &vert_mod)) {
@@ -154,6 +211,9 @@ bool initialize(const char* app_name)
         return false;
     }
 
+    auto bindings = vertex_t::binding();
+    auto attributes = vertex_t::attributes();
+
     vulkan::pipeline_builder_t pipeline_builder {};
     pipeline_builder
         .set_multisampling_none()
@@ -165,6 +225,7 @@ bool initialize(const char* app_name)
         .set_polygon_mode(VK_POLYGON_MODE_FILL)
         .set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
         .set_shaders(vert_mod, frag_mod)
+        .set_vertex_state(1, &bindings, attributes.len, attributes.data)
         .set_layout(state->pipeline_layout);
 
     if (!pipeline_builder.build(state->context->device->logical_device, &state->pipeline)) {
@@ -210,6 +271,10 @@ void shutdown(void)
         if (state->fences[i] != VK_NULL_HANDLE) {
             vkDestroyFence(device, state->fences[i], nullptr);
         }
+    }
+
+    if (state->vertex_buffer.handle != VK_NULL_HANDLE) {
+        vmaDestroyBuffer(state->context->vma, state->vertex_buffer.handle, state->vertex_buffer.memory);
     }
 
     gui::shutdown();
@@ -311,7 +376,7 @@ bool draw(void)
     }
 
     {
-        vulkan::context::begin_label(cmd, "color attachment transition", { .data = { 1.f, 0.f, 0.f, 1.f } });
+        vulkan::context::begin_label(cmd, "color attachment transition", { 1, 0, 0, 1 });
         VkImageMemoryBarrier2 before_rendering = vulkan::context::image_layout_transition(
             swapchain->images[image_index], VK_IMAGE_ASPECT_COLOR_BIT,
             VK_IMAGE_LAYOUT_UNDEFINED,
@@ -370,11 +435,16 @@ bool draw(void)
         };
 
         vkCmdBeginRendering(cmd, &rendering);
-        vulkan::context::begin_label(cmd, "Rendering", { .data = { 1.f, 0.f, 0.f, 1.f } });
+        vulkan::context::begin_label(cmd, "Rendering", { 1, 0, 0, 1 });
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, state->pipeline);
         vkCmdSetViewport(cmd, 0, 1, &swapchain->viewport);
         vkCmdSetScissor(cmd, 0, 1, &swapchain->scissor);
-        vkCmdDraw(cmd, 3, 1, 0, 0);
+
+        memcpy(state->vertex_buffer.allocation_info.pMappedData, vertices, state->vertex_buffer.size);
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(cmd, 0, 1, &state->vertex_buffer.handle, &offset);
+
+        vkCmdDraw(cmd, 6, 1, 0, 0);
         vulkan::context::end_label(cmd);
         vkCmdEndRendering(cmd);
     }
@@ -412,7 +482,7 @@ bool draw(void)
         };
 
         vkCmdBeginRendering(cmd, &rendering);
-        vulkan::context::begin_label(cmd, "ImGui", { .data = { 1.f, 0.f, 0.f, 1.f } });
+        vulkan::context::begin_label(cmd, "ImGui", { 1, 0, 0, 1 });
 
         gui::prepare();
 
@@ -430,7 +500,7 @@ bool draw(void)
     }
 
     {
-        vulkan::context::begin_label(cmd, "present mode transition", { .data = { 1.f, 0.f, 0.f, 1.f } });
+        vulkan::context::begin_label(cmd, "present mode transition", { 1, 0, 0, 1 });
         VkImageMemoryBarrier2 to_present = vulkan::context::image_layout_transition(
             swapchain->images[image_index], VK_IMAGE_ASPECT_COLOR_BIT,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -544,5 +614,4 @@ bool draw(void)
     state->current_frame = (state->current_frame + 1) % state->in_flight_count;
     return true;
 }
-
 }

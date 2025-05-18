@@ -79,4 +79,19 @@ struct image_t {
     VmaAllocationCreateInfo allocation_info;
 };
 
+struct buffer_create_info_t {
+    u64 size;
+    VkBufferUsageFlags usage;
+    VmaMemoryUsage memory_usage;
+};
+
+struct buffer_t {
+    VkBuffer handle;
+    VmaAllocation memory;
+    VmaAllocationInfo allocation_info;
+    u64 size;
+    VkBufferUsageFlags usage;
+    VmaMemoryUsage memory_usage;
+};
+
 }

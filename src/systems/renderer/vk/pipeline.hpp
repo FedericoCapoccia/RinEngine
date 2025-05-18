@@ -22,6 +22,9 @@ public:
     pipeline_builder_t& set_color_attachment_format(VkFormat format);
     pipeline_builder_t& set_depth_format(VkFormat format);
     pipeline_builder_t& disable_depthtest(void);
+    pipeline_builder_t& set_vertex_state(
+        u32 bindings_count, VkVertexInputBindingDescription* bindings,
+        u32 attributes_count, VkVertexInputAttributeDescription* attributes);
 
 private:
     darray<VkPipelineShaderStageCreateInfo> m_shader_stages { true };
@@ -30,6 +33,7 @@ private:
     VkPipelineDepthStencilStateCreateInfo m_depth_stencil;
     VkPipelineMultisampleStateCreateInfo m_multisampling;
     VkPipelineRasterizationStateCreateInfo m_rasterizer;
+    VkPipelineVertexInputStateCreateInfo m_vertex_state;
     VkPipelineRenderingCreateInfo m_rendering;
     VkFormat m_color_attachment_format;
     VkViewport m_viewport;

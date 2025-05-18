@@ -117,6 +117,17 @@ pipeline_builder_t& pipeline_builder_t::disable_depthtest(void)
     return *this;
 }
 
+pipeline_builder_t& pipeline_builder_t::set_vertex_state(
+    u32 bindings_count, VkVertexInputBindingDescription* bindings,
+    u32 attributes_count, VkVertexInputAttributeDescription* attributes)
+{
+    m_vertex_state.vertexBindingDescriptionCount = bindings_count;
+    m_vertex_state.pVertexBindingDescriptions = bindings;
+    m_vertex_state.vertexAttributeDescriptionCount = attributes_count;
+    m_vertex_state.pVertexAttributeDescriptions = attributes;
+    return *this;
+}
+
 void pipeline_builder_t::clear(void)
 {
     m_input_assembly = VkPipelineInputAssemblyStateCreateInfo {
@@ -209,6 +220,16 @@ void pipeline_builder_t::clear(void)
         .stencilAttachmentFormat = VK_FORMAT_UNDEFINED,
     };
 
+    m_vertex_state = VkPipelineVertexInputStateCreateInfo {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .vertexBindingDescriptionCount = 0,
+        .pVertexBindingDescriptions = nullptr,
+        .vertexAttributeDescriptionCount = 0,
+        .pVertexAttributeDescriptions = nullptr,
+    };
+
     m_viewport = {};
     m_scissor = VkRect2D {};
 
@@ -238,16 +259,6 @@ bool pipeline_builder_t::build(VkDevice device, VkPipeline* out)
         .blendConstants = { 0, 0, 0, 0 },
     };
 
-    VkPipelineVertexInputStateCreateInfo vertex_state {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .vertexBindingDescriptionCount = 0,
-        .pVertexBindingDescriptions = nullptr,
-        .vertexAttributeDescriptionCount = 0,
-        .pVertexAttributeDescriptions = nullptr,
-    };
-
     VkDynamicState dynamic_state[] {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
@@ -267,7 +278,7 @@ bool pipeline_builder_t::build(VkDevice device, VkPipeline* out)
         .flags = 0,
         .stageCount = (u32)m_shader_stages.len,
         .pStages = m_shader_stages.data,
-        .pVertexInputState = &vertex_state,
+        .pVertexInputState = &m_vertex_state,
         .pInputAssemblyState = &m_input_assembly,
         .pTessellationState = nullptr,
         .pViewportState = &viewport_state,

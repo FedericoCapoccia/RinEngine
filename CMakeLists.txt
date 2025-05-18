@@ -14,6 +14,7 @@ set(GLFW_BUILD_TESTS OFF CACHE BOOL "GLFW lib only")
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "GLFW lib only")
 set(GLFW_BUILD_INSTALL OFF CACHE BOOL "GLFW lib only")
 add_subdirectory("vendor/glfw")
+add_subdirectory("vendor/glm")
 
 add_executable(${CMAKE_PROJECT_NAME})
 
@@ -59,7 +60,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     "vendor/imgui"
 )
 
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE glfw)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE glfw glm::glm)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE 
     "GLFW_INCLUDE_NONE"
     "VK_NO_PROTOTYPES"
