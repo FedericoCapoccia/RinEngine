@@ -2,7 +2,7 @@
 
 ## About
 
-A personal game engine project created as a learning platform for exploring low-level graphics APIs (Vulkan, DirectX 12), physics and math for games, and software architecture principles.
+A personal game engine project created as a learning platform for exploring low-level graphics APIs such as Vulkan, physics and math for games, and software architecture principles.
 
 ## Building from Source
 Ensure you have the required dependencies:
